@@ -21,7 +21,7 @@ class Node:
         return self.value is not None
 
 
-class DecisionTree:
+class DecisionTreeClassifier:
     def __init__(
         self,
         max_depth=100,
@@ -144,7 +144,7 @@ class DecisionTree:
 
 if __name__ == "__main__":
     bc = datasets.load_breast_cancer()
-    tree = DecisionTree()
+    tree = DecisionTreeClassifier()
     X_train, X_test, y_train, y_test = train_test_split(
         bc.data, bc.target, test_size=0.2, random_state=1234
     )
