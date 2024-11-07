@@ -1,12 +1,13 @@
 from typing import Any
 from dataclasses import dataclass
 
-from utils import calculate_accuracy
+from utils import calculate_accuracy, calculate_mse, calculate_rmse
 
 import numpy as np
 
 from sklearn.model_selection import train_test_split
 from sklearn import datasets
+from sklearn.tree import DecisionTreeRegressor as dtr
 
 
 @dataclass
@@ -21,10 +22,10 @@ class Node:
         return self.value is not None
 
 
-class DecisionTreeClassifier:
+class DecisionTree:
     def __init__(
         self,
-        max_depth=100,
+        max_depth=10,
         min_samples_split=2,
         n_features_per_split=None,
     ):
@@ -86,8 +87,8 @@ class DecisionTreeClassifier:
         return best_feature, best_threshold
 
     def _get_information_gain(self, y, feature_values, threshold):
-        # calculate parent entropy
-        p_entropy = self._get_entropy(y)
+        # calculate parent impurity
+        p_impurity = self._get_impurity(y)
 
         # split the parent
         left_idxs, right_idxs = self._split(feature_values, threshold)
@@ -97,12 +98,12 @@ class DecisionTreeClassifier:
         if n_left == 0 or n_right == 0:
             return 0
 
-        # calculate children entropy
-        lc_entropy = self._get_entropy(y[left_idxs])
-        rc_entropy = self._get_entropy(y[right_idxs])
-        c_entropy = (n_left / n) * lc_entropy + (n_right / n) * rc_entropy
+        # calculate children impurity
+        lc_impurity = self._get_impurity(y[left_idxs])
+        rc_impurity = self._get_impurity(y[right_idxs])
+        c_impurity = (n_left / n) * lc_impurity + (n_right / n) * rc_impurity
 
-        return p_entropy - c_entropy
+        return p_impurity - c_impurity
 
     def _split(self, X_column, threshold):
 
@@ -142,13 +143,38 @@ class DecisionTreeClassifier:
             return self._traverse_tree(x, node.right)
 
 
+class DecisionTreeClassifier(DecisionTree):
+    def __init__(self, max_depth=10, min_samples_split=2, n_features_per_split=None):
+        super().__init__(max_depth, min_samples_split, n_features_per_split)
+
+    def _get_impurity(self, y):
+        # calculate entropy
+        hist = np.bincount(y)
+        probs = hist / len(y)
+
+        return -np.sum([p * np.log(p) for p in probs if p > 0])
+
+
+class DecisionTreeRegressor(DecisionTree):
+    def __init__(self, max_depth=10, min_samples_split=2, n_features_per_split=None):
+        super().__init__(max_depth, min_samples_split, n_features_per_split)
+
+    def _get_impurity(self, y):
+        # calculate mse
+        return calculate_mse(np.mean(y), y)
+
+
 if __name__ == "__main__":
-    bc = datasets.load_breast_cancer()
-    tree = DecisionTreeClassifier()
+   
+
+    # regression
+    d = datasets.load_diabetes()
+    tree = dtr(max_depth=5)
+    X, y = d.data, d.target
     X_train, X_test, y_train, y_test = train_test_split(
-        bc.data, bc.target, test_size=0.2, random_state=1234
+        X, y, test_size=0.2, random_state=1234
     )
     tree.fit(X_train, y_train)
     y_pred = tree.predict(X_test)
 
-    print("Accuracy:", calculate_accuracy(y_pred, y_test))
+    print("RMSE:", calculate_rmse(y_pred, y_test))
